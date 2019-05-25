@@ -10,8 +10,8 @@ class CharConv(nn.Module):
 
     def __init__(self,
                  in_feature,
-                 filters=[1, 2, 3, 4, 5],
-                 features=[128, 256, 128, 64, 32]):
+                 filters,
+                 features):
         super(CharConv, self).__init__()
 
         self.filters = filters
