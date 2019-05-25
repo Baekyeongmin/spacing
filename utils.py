@@ -18,7 +18,7 @@ def pad_sents(sents, pad_token):
     return sents_padded
 
 
-def load_corpus(file_path, make_vocab=False):
+def load_corpus(file_path, make_vocab=False, vocab_path=None):
     input_data = []
     input_label = []
 
@@ -40,11 +40,13 @@ def load_corpus(file_path, make_vocab=False):
             input_data.append(data)
             input_label.append(label)
 
-    vocab = None
     if make_vocab:
         vocab = list(set([x for sub_list in input_data for x in sub_list]))
+        with open(vocab_path, 'w') as fw:
+            for word in vocab:
+                fw.write(word + '\n')
 
-    return input_data, input_label, vocab
+    return input_data, input_label
 
 
 def batch_iter(input_data, input_label, batch_size, shuffle=False):
@@ -56,7 +58,6 @@ def batch_iter(input_data, input_label, batch_size, shuffle=False):
 
     if shuffle:
         np.random.shuffle(index_array)
-
     for i in range(batch_num):
         indices = index_array[i * batch_size: (i + 1) * batch_size]
 

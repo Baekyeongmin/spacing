@@ -1,0 +1,9 @@
+{
+  "embedding_dim": 100,
+  "char_filters": [1, 2, 3, 4, 5],
+  "char_features": [128, 256, 128, 64, 32],
+  "linear1_dim": 300,
+  "linear2_dim": 150,
+  "gru_hidden": 50,
+  "gru_bidirectional": true
+}

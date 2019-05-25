@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence
 from vocab import Vocabulary
+import json
 
 
 class CharConv(nn.Module):
@@ -46,43 +47,44 @@ class CharConv(nn.Module):
 
 
 class Spacing(nn.Module):
-    def __init__(self,
-                 vocab,
-                 num_vocab=11174,
-                 embedding_dim=100,
-                 filters=[1, 2, 3, 4, 5],
-                 features=[128, 256, 128, 64, 32],
-                 linear1_dim=300,
-                 linear2_dim=150,
-                 gru_hidden=50,
-                 gru_bidirectional=True):
+    def __init__(self, vocab):
         super(Spacing, self).__init__()
+
+        with open('model_config.json') as model_config_file:
+            model_config = json.load(model_config_file)
+
+        self.embedding_dim = model_config['embedding_dim']
+        self.filters = model_config['char_filters']
+        self.features = model_config['char_features']
+        self.linear1_dim = model_config['linear1_dim']
+        self.linear2_dim = model_config['linear2_dim']
+        self.gru_hidden = model_config['gru_hidden']
+        self.gru_bidirectional = model_config['gru_bidirectional']
 
         self.vocab = vocab
 
-        num_features = sum(features)
+        num_features = sum(self.features)
 
-        if gru_bidirectional:
-            linear_3_in_dim = gru_hidden * 2
+        if self.gru_bidirectional:
+            linear_3_in_dim = self.gru_hidden * 2
         else:
-            linear_3_in_dim = gru_hidden
+            linear_3_in_dim = self.gru_hidden
 
-        #embedding : 표현가능한 음절 (11172) + padding (1) + unknown (1) = 11174
-        self.embedding = nn.Embedding(num_embeddings=num_vocab,
-                                      embedding_dim=embedding_dim)
+        self.embedding = nn.Embedding(num_embeddings=len(vocab),
+                                      embedding_dim=self.embedding_dim)
 
-        self.char_conv = CharConv(in_feature=embedding_dim,
-                                  filters=filters,
-                                  features=features)
+        self.char_conv = CharConv(in_feature=self.embedding_dim,
+                                  filters=self.filters,
+                                  features=self.features)
         self.batch_norm = nn.BatchNorm1d(num_features=num_features)
         self.linear1 = nn.Linear(in_features=num_features,
-                                 out_features=linear1_dim)
-        self.linear2 = nn.Linear(in_features=linear1_dim,
-                                 out_features=linear2_dim)
-        self.gru = nn.GRU(input_size=linear2_dim,
-                          hidden_size=gru_hidden,
+                                 out_features=self.linear1_dim)
+        self.linear2 = nn.Linear(in_features=self.linear1_dim,
+                                 out_features=self.linear2_dim)
+        self.gru = nn.GRU(input_size=self.linear2_dim,
+                          hidden_size=self.gru_hidden,
                           num_layers=1,
-                          bidirectional=gru_bidirectional)
+                          bidirectional=self.gru_bidirectional)
         self.linear3 = nn.Linear(in_features=linear_3_in_dim,
                                  out_features=1)
         self.sigmoid = nn.Sigmoid()
@@ -92,7 +94,6 @@ class Spacing(nn.Module):
             lengths = [len(s) for s in sents]
         else:
             lengths = [len(sents)]
-        #x shape: [b_s, max_sequnece_length]
         x = self.vocab.to_input_tensor(sents, self.device())
         x = self.embedding(x)
         x = torch.transpose(x, 1, 2)
@@ -116,18 +117,3 @@ class Spacing(nn.Module):
         """
         return self.linear1.weight.device
 
-
-if __name__ == "__main__":
-    print('-' * 10 + 'Character Convolution Test' + '-' * 10)
-    # CharConv test
-    char_conv = CharConv(100)
-    # test_input [bs, seq_len, embedding_dim]
-    input_tensor = torch.randn(30, 100, 20)
-    print(char_conv.forward(input_tensor).size())
-
-    print('-' * 10 + 'Spacing Model Test' + '-' * 10)
-    vocab = Vocabulary('./test_vocab.txt')
-    spacing_model = Spacing(vocab=vocab)
-
-    input_sent = ['안 녕 하 세 요 백 영 민 입 니 다 .'.split(), '네 안 녕 하 세 요'.split()]
-    print(spacing_model.forward(input_sent)[0].size())
