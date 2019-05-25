@@ -2,6 +2,7 @@ from utils import load_corpus, batch_iter, pad_sents
 from vocab import Vocabulary
 from model import Spacing
 from trainer import Trainer
+import torch
 import json
 
 

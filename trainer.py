@@ -130,6 +130,12 @@ class Trainer(object):
                                  'model_checkpoint_epoch_{}.pth'.format(epoch))
         torch.save(checkpoint, save_path)
 
+        with open(os.path.join(self.model_save_path, 'checkpoint.txt'), 'w') as fw:
+            fw.write(f'best checkpoint:{epoch}')
+
+        print(f'Best Model is saved at {save_path}')
+
+
     def load(self, epoch):
         load_path = os.path.join(self.model_save_path,
                                  'model_checkpoint_epoch_{}.pth'.format(epoch))
