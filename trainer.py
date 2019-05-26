@@ -24,7 +24,8 @@ class Trainer(object):
         self.scheduler_step = config['scheduler_step']
         self.scheduler_decay = config['scheduler_decay']
         self.model_save_path = config['model_save_path']
-
+        self.gradient_clamping = config['gradient_clamping']
+        self.gradient_clamping_threshold = config['clamping_threshold']
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         #data
@@ -38,6 +39,7 @@ class Trainer(object):
         self.model = model.to(self.device)
         self.loss = loss.to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.learnig_rate)
+
         if self.scheduler:
             assert type(self.scheduler_step) is int
             self.scheduler = optim.lr_scheduler.StepLR(optimizer=self.optimizer,
@@ -112,9 +114,9 @@ class Trainer(object):
         logging_step = 100
 
         for idx, (batch_data, batch_label) in enumerate(batch_iter(self.train_data,
-                                                            self.train_label,
-                                                            self.batch_size,
-                                                            shuffle=True)):
+                                                                   self.train_label,
+                                                                   self.batch_size,
+                                                                   shuffle=True)):
 
             batch_data, batch_label, lengths = self.make_input_tensor(batch_data, batch_label)
 
@@ -122,6 +124,11 @@ class Trainer(object):
             output, length = self.model.forward(batch_data, lengths)
             loss = self.loss(output, batch_label, length)
             loss.backward()
+
+            if self.gradient_clamping:
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(),
+                                               self.gradient_clamping_threshold)
+
             self.optimizer.step()
             self.scheduler.step()
 
@@ -206,7 +213,6 @@ class Trainer(object):
             fw.write(f'best checkpoint:{epoch}')
 
         print(f'Best Model is saved at {save_path}')
-
 
     def load(self, epoch):
         load_path = os.path.join(self.model_save_path,

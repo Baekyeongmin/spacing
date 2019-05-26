@@ -4,8 +4,10 @@
   "model_save_path": "./weights/",
   "vocab_path": "./vocab.txt",
   "learning_rate": 0.001,
-  "batch_size": 256,
+  "batch_size": 128,
   "scheduler": true,
   "scheduler_step": 10000,
-  "scheduler_decay": 0.5
+  "scheduler_decay": 0.5,
+  "gradient_clamping": true,
+  "clamping_threshold": 0.5
 }

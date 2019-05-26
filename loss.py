@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch
-
+import numpy as np
 
 class BCELossWithLength(nn.Module):
 
@@ -18,4 +18,5 @@ class BCELossWithLength(nn.Module):
             mask[idx,:l] = 1
 
         loss = loss * mask
+
         return torch.sum(loss) / torch.sum(length)
