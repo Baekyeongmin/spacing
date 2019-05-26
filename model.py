@@ -60,6 +60,8 @@ class Spacing(nn.Module):
         self.linear2_dim = model_config['linear2_dim']
         self.gru_hidden = model_config['gru_hidden']
         self.gru_bidirectional = model_config['gru_bidirectional']
+        self.use_dropout = model_config['use_dropout']
+        self.dropout_keep_prob = model_config['dropout_keep_prob']
 
         num_features = sum(self.features)
 
@@ -85,6 +87,10 @@ class Spacing(nn.Module):
                           bidirectional=self.gru_bidirectional)
         self.linear3 = nn.Linear(in_features=linear_3_in_dim,
                                  out_features=1)
+
+        if self.use_dropout:
+            self.dropout = nn.Dropout(p=self.dropout_keep_prob)
+
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x, lengths=None):
@@ -101,6 +107,8 @@ class Spacing(nn.Module):
         x, length = pad_packed_sequence(x)
         x = torch.transpose(x, 1, 0)
         x = self.linear3(x)
+        if self.use_dropout:
+            x = self.dropout(x)
         x = self.sigmoid(x)
 
         return torch.squeeze(x), length

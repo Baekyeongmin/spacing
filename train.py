@@ -1,8 +1,7 @@
-from utils import load_corpus, batch_iter, pad_sents
+from utils import load_corpus
 from vocab import Vocabulary
 from model import Spacing
 from trainer import Trainer
-from loss import BCELossWithLength
 import json
 
 
@@ -22,12 +21,10 @@ def train():
     vocab = Vocabulary(vocab_path)
 
     model = Spacing(vocab_len=len(vocab))
-    loss = BCELossWithLength()
 
     print(model)
 
     trainer = Trainer(model=model,
-                      loss=loss,
                       vocab=vocab,
                       train_data=train_input_data,
                       train_label=train_input_label,

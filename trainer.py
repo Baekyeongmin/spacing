@@ -4,6 +4,7 @@ import numpy as np
 import os
 
 from utils import pad_sents, batch_iter
+from loss import BCELossWithLength
 
 
 class Trainer(object):
@@ -15,7 +16,6 @@ class Trainer(object):
                  val_label=None,
                  vocab=None,
                  model=None,
-                 loss=None,
                  config=None):
         #training_config
         self.batch_size = config['batch_size']
@@ -37,7 +37,7 @@ class Trainer(object):
         #training
         self.vocab = vocab
         self.model = model.to(self.device)
-        self.loss = loss.to(self.device)
+        self.loss = BCELossWithLength().to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.learnig_rate)
 
         if self.scheduler:

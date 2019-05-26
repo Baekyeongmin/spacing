@@ -5,5 +5,7 @@
   "linear1_dim": 300,
   "linear2_dim": 150,
   "gru_hidden": 50,
-  "gru_bidirectional": true
+  "gru_bidirectional": true,
+  "use_dropout": true,
+  "dropout_keep_prob": 0.5
 }

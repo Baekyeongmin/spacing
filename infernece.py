@@ -1,7 +1,6 @@
 from train import Trainer
 from vocab import Vocabulary
 from model import Spacing
-from loss import BCELossWithLength
 import torch
 import json
 import os
@@ -22,10 +21,8 @@ def inference():
     vocab = Vocabulary(vocab_path)
 
     model = Spacing(vocab_len=len(vocab)).eval()
-    loss = BCELossWithLength()
 
     trainer = Trainer(model=model,
-                      loss=loss,
                       vocab=vocab,
                       config=train_config)
     trainer.load(epoch)
@@ -37,21 +34,29 @@ def inference():
 
         for word in words:
             chars = [char for char in word]
-            data.extend(chars)
+            data.append(chars)
+        sorted_data = sorted(data, key=lambda e: len(e), reverse=True)
+        idx = sorted(range(len(data)), key=lambda e: len(data[e]), reverse=True)
+        batch_data, batch_label, lengths = trainer.make_input_tensor(sorted_data, None)
 
-        batch_data, batch_label, lengths = trainer.make_input_tensor(data, None)
+        outputs, _ = trainer.model.forward(batch_data, lengths)
+        outputs = torch.round(outputs)
 
-        output, _ = trainer.model.forward(batch_data, lengths)
-        output = torch.round(output)
+        results = []
+        for output, data in zip(outputs, sorted_data):
+            result = ''
+            for output_char, char in zip(output, data):
+                if output_char == 1:
+                    result += (char + ' ')
+                else:
+                    result += char
+            results.append(result)
 
-        result = ''
-        for idx, o in enumerate(output):
-            if o == 1:
-                result += (data[idx] + ' ')
-            else:
-                result += data[idx]
+        sorted_result = ''
+        for i in range(len(idx)):
+            sorted_result += results[idx.index(i)]
 
-        print(result)
+        print(sorted_result)
 
 
 if __name__ == "__main__":
