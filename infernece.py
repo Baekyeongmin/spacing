@@ -1,6 +1,7 @@
 from train import Trainer
 from vocab import Vocabulary
 from model import Spacing
+from loss import BCELossWithLength
 import torch
 import json
 import os
@@ -20,8 +21,13 @@ def inference():
 
     vocab = Vocabulary(vocab_path)
 
-    model = Spacing(vocab=vocab)
-    trainer = Trainer(model=model, config=train_config)
+    model = Spacing(vocab_len=len(vocab)).eval()
+    loss = BCELossWithLength()
+
+    trainer = Trainer(model=model,
+                      loss=loss,
+                      vocab=vocab,
+                      config=train_config)
     trainer.load(epoch)
 
     while True:
@@ -33,7 +39,9 @@ def inference():
             chars = [char for char in word]
             data.extend(chars)
 
-        output, _ = trainer.model.forward(data)
+        batch_data, batch_label, lengths = trainer.make_input_tensor(data, None)
+
+        output, _ = trainer.model.forward(batch_data, lengths)
         output = torch.round(output)
 
         result = ''

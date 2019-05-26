@@ -2,9 +2,10 @@ import torch
 import torch.optim as optim
 import numpy as np
 import os
+from tqdm import tqdm
+import math
 
 from utils import pad_sents, batch_iter, load_corpus
-from loss import BCELossWithLength
 
 
 class Trainer(object):
@@ -14,11 +15,14 @@ class Trainer(object):
                  train_label=None,
                  val_data=None,
                  val_label=None,
-                 model = None,
+                 vocab=None,
+                 model=None,
+                 loss=None,
                  config=None):
         #training_config
         self.batch_size = config['batch_size']
         self.learnig_rate = config['learning_rate']
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         #save_and_load
         self.model_save_path = './weights/'
@@ -30,9 +34,27 @@ class Trainer(object):
         self.val_label = val_label
 
         #training
-        self.model = model
-        self.loss = BCELossWithLength()
+        self.vocab = vocab
+        self.model = model.to(self.device)
+        self.loss = loss.to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.learnig_rate)
+
+    def make_input_tensor(self, batch_data, batch_label):
+
+        if type(batch_data[0]) == list:
+            lengths = [len(s) for s in batch_data]
+        else:
+            lengths = [len(batch_data)]
+
+        batch_data = self.vocab.words2indices(batch_data)
+        batch_data = pad_sents(batch_data, 0)
+        batch_data = torch.tensor(batch_data, dtype=torch.long, device=self.device)
+
+        if batch_label:
+            batch_label = pad_sents(batch_label, 0)
+            batch_label = torch.tensor(batch_label, dtype=torch.float, device=self.device)
+
+        return batch_data, batch_label, lengths
 
     def accuracy(self, output, labels, length):
         total = 0
@@ -53,16 +75,17 @@ class Trainer(object):
 
         self.model.train()
 
-        for batch_data, batch_label in batch_iter(self.train_data,
+        total = math.ceil(len(self.train_data) / self.batch_size)
+
+        for batch_data, batch_label in tqdm(batch_iter(self.train_data,
                                                   self.train_label,
                                                   self.batch_size,
-                                                  shuffle=True):
+                                                  shuffle=True),  total=total):
 
-            batch_label = pad_sents(batch_label, 0)
-            batch_label = torch.tensor(batch_label, dtype=torch.float)
+            batch_data, batch_label, lengths = self.make_input_tensor(batch_data, batch_label)
 
             self.optimizer.zero_grad()
-            output, length = self.model.forward(batch_data)
+            output, length = self.model.forward(batch_data, lengths)
             loss = self.loss(output, batch_label, length)
             loss.backward()
             self.optimizer.step()
@@ -87,9 +110,10 @@ class Trainer(object):
                                                   self.val_label,
                                                   self.batch_size,
                                                   shuffle=False):
-            batch_label = pad_sents(batch_label, 0)
-            batch_label = torch.tensor(batch_label, dtype=torch.float)
-            output, length = self.model.forward(batch_data)
+
+            batch_data, batch_label, lengths = self.make_input_tensor(batch_data, batch_label)
+
+            output, length = self.model.forward(batch_data, lengths)
             loss = self.loss(output, batch_label, length)
 
             correct, total = self.accuracy(output, batch_label, length)

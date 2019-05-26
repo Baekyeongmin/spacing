@@ -47,7 +47,7 @@ class CharConv(nn.Module):
 
 
 class Spacing(nn.Module):
-    def __init__(self, vocab):
+    def __init__(self, vocab_len):
         super(Spacing, self).__init__()
 
         with open('model_config.json') as model_config_file:
@@ -61,8 +61,6 @@ class Spacing(nn.Module):
         self.gru_hidden = model_config['gru_hidden']
         self.gru_bidirectional = model_config['gru_bidirectional']
 
-        self.vocab = vocab
-
         num_features = sum(self.features)
 
         if self.gru_bidirectional:
@@ -70,7 +68,7 @@ class Spacing(nn.Module):
         else:
             linear_3_in_dim = self.gru_hidden
 
-        self.embedding = nn.Embedding(num_embeddings=len(vocab),
+        self.embedding = nn.Embedding(num_embeddings=vocab_len,
                                       embedding_dim=self.embedding_dim)
 
         self.char_conv = CharConv(in_feature=self.embedding_dim,
@@ -89,12 +87,7 @@ class Spacing(nn.Module):
                                  out_features=1)
         self.sigmoid = nn.Sigmoid()
 
-    def forward(self, sents):
-        if type(sents[0]) == list:
-            lengths = [len(s) for s in sents]
-        else:
-            lengths = [len(sents)]
-        x = self.vocab.to_input_tensor(sents, self.device())
+    def forward(self, x, lengths=None):
         x = self.embedding(x)
         x = torch.transpose(x, 1, 2)
         x = self.char_conv(x)
